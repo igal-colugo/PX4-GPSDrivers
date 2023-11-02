@@ -39,6 +39,7 @@
 
 #include "../../definitions.h"
 #include "../mavlink/mavlink_helpers.h"
+#include "../mavlink/mavlink_msg_asio_status.h"
 #include "../mavlink/mavlink_msg_hil_gps.h"
 #include "../mavlink/mavlink_types.h"
 #include "base_station.h"
@@ -49,17 +50,25 @@
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/sensor_gps.h>
 #include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/vehicle_command.h>
 
 #include <math.h>
 
+#define MAVLINK_MSG_ID_HEARTBIT 0
 #define MAVLINK_MSG_ID_HIL_GPS 113
+#define MAV_CMD_ASIO_SET_INIT_LOC 40604
+#define MAV_CMD_ASIO_RESET 40605
 #define RATE_EXTENDED_SYS_STATE_PERIOD 1000000 // 1 Hz
 #define RATE_GPS_RAW_INT_PERIOD 200000         // 5 Hz
-#define RATE_ATTITUDE_PERIOD 100000            // 10 Hz
+#define RATE_ATTITUDE_PERIOD 90000             // 11 Hz
+
+#define commandParamToInt(n) static_cast<int>(n >= 0 ? n + 0.5f : n - 0.5f)
 
 class GPSDriverMavlink : public GPSBaseStationSupport
 {
   public:
+    static hrt_abstime start_timer_init_location;
+
     struct Quaternion
     {
         double w;
@@ -103,7 +112,9 @@ class GPSDriverMavlink : public GPSBaseStationSupport
 
     void get_parameters();
     bool handle_message(mavlink_message_t *msg);
+    void handle_message_heartbit(mavlink_message_t *msg);
     void handle_message_hil_gps(mavlink_message_t *msg);
+    void handle_message_asio_status(mavlink_message_t *msg);
     void send_mavlink_message(mavlink_message_t *msg);
     void send_mavlink_attitude_message(mavlink_attitude_t *msg);
     void send_mavlink_gps_raw_int_message(mavlink_gps_raw_int_t *msg);
@@ -111,6 +122,9 @@ class GPSDriverMavlink : public GPSBaseStationSupport
     void send_mavlink_extended_sys_state_message(mavlink_extended_sys_state_t *msg);
     void send_mavlink_command_long_message(mavlink_command_long_t *msg);
     void send_mavlink_packet(uint32_t msgid, const char *packet, uint8_t min_length, uint8_t length, uint8_t crc_extra);
+
+    void set_asio_init_location();
+    void set_asio_init_location_2();
 
     /**
      * receive data for at least the specified amount of time
@@ -144,6 +158,7 @@ class GPSDriverMavlink : public GPSBaseStationSupport
     // static px4::atomic_bool _is_can_update_gps_raw_int;
     uORB::Subscription _sensor_gps_sub{ORB_ID(sensor_gps)};
     uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
+    uORB::Subscription _command_sub{ORB_ID(vehicle_command)};
 
     EulerAngles angles = EulerAngles();
     Quaternion q = Quaternion();
@@ -156,7 +171,6 @@ class GPSDriverMavlink : public GPSBaseStationSupport
     int32_t initialized_lattitude = 0;
     int32_t initialized_longitude = 0;
     int32_t initialized_time = -1;
-    hrt_abstime start_timer_init_location = 0;
     hrt_abstime timer_init_location = 0;
     bool is_hil_data_recieved = false;
 

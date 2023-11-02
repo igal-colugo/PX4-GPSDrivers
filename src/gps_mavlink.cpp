@@ -52,6 +52,8 @@
 px4::atomic_bool GPSDriverMavlink::_is_initialized{false};
 // px4::atomic_bool GPSDriverMavlink::_is_can_update_gps_raw_int{false};
 
+hrt_abstime GPSDriverMavlink::start_timer_init_location = 0;
+
 GPSDriverMavlink::GPSDriverMavlink(GPSCallbackPtr callback, void *callback_user, sensor_gps_s *gps_position, satellite_info_s *satellite_info, float heading_offset)
     : GPSBaseStationSupport(callback, callback_user), _heading_offset(heading_offset), _gps_position(gps_position), _satellite_info(satellite_info)
 {
@@ -81,7 +83,10 @@ void GPSDriverMavlink::get_parameters()
     param_get(parameter_handle, &initialized_time);
     if (initialized_time > 0)
     {
-        start_timer_init_location = hrt_absolute_time();
+        if (GPSDriverMavlink::start_timer_init_location == 0)
+        {
+            GPSDriverMavlink::start_timer_init_location = hrt_absolute_time();
+        }
     }
 }
 
@@ -223,6 +228,51 @@ void GPSDriverMavlink::send_mavlink_command_long_message(mavlink_command_long_t 
     send_mavlink_packet(MAVLINK_MSG_ID_COMMAND_LONG, (const char *) msg, MAVLINK_MSG_ID_COMMAND_LONG_MIN_LEN, MAVLINK_MSG_ID_COMMAND_LONG_LEN, MAVLINK_MSG_ID_COMMAND_LONG_CRC);
 }
 
+void GPSDriverMavlink::set_asio_init_location()
+{
+    timer_init_location = hrt_absolute_time();
+    if (initialized_time > 0 && (timer_init_location - start_timer_init_location) > (initialized_time * 1000 * 1000) && !is_hil_data_recieved)
+    {
+        // MAV_CMD_ASIO_SET_INIT_LOC
+        mavlink_mavlink_command_long_msg.command = MAV_CMD_ASIO_SET_INIT_LOC;
+        mavlink_mavlink_command_long_msg.param5 = (float) initialized_lattitude * 1e-7f;
+        mavlink_mavlink_command_long_msg.param6 = (float) initialized_longitude * 1e-7f;
+
+        send_mavlink_command_long_message(&mavlink_mavlink_command_long_msg);
+
+        // px4_usleep(1000);
+
+        // MAV_CMD_ASIO_RESET
+        // mavlink_mavlink_command_long_msg = {};
+        // mavlink_mavlink_command_long_msg.command = MAV_CMD_ASIO_RESET;
+
+        // send_mavlink_command_long_message(&mavlink_mavlink_command_long_msg);
+
+        GPSDriverMavlink::start_timer_init_location = hrt_absolute_time();
+    }
+}
+
+void GPSDriverMavlink::set_asio_init_location_2()
+{
+    timer_init_location = hrt_absolute_time();
+    if (initialized_time > 0 && (timer_init_location - start_timer_init_location) > (initialized_time * 1000 * 1000) && !is_hil_data_recieved)
+    {
+        mavlink_gps_raw_int_msg.lat = initialized_lattitude;
+        mavlink_gps_raw_int_msg.lon = initialized_longitude;
+        mavlink_gps_raw_int_msg.eph = 79;
+        mavlink_gps_raw_int_msg.epv = 127;
+        mavlink_gps_raw_int_msg.satellites_visible = 11;
+        mavlink_gps_raw_int_msg.h_acc = 0;
+        mavlink_gps_raw_int_msg.v_acc = 0;
+        mavlink_gps_raw_int_msg.vel_acc = 0;
+        mavlink_gps_raw_int_msg.hdg_acc = 0;
+        mavlink_gps_raw_int_msg.yaw = 708;
+
+        send_mavlink_gps_raw_int_message(&mavlink_gps_raw_int_msg);
+
+        GPSDriverMavlink::start_timer_init_location = hrt_absolute_time();
+    }
+}
 //@note handle message
 bool GPSDriverMavlink::handle_message(mavlink_message_t *msg)
 {
@@ -230,9 +280,16 @@ bool GPSDriverMavlink::handle_message(mavlink_message_t *msg)
 
     switch (msg->msgid)
     {
-
+    case MAVLINK_MSG_ID_HEARTBIT:
+        handle_message_heartbit(msg);
+        return_value = true;
+        break;
     case MAVLINK_MSG_ID_HIL_GPS:
         handle_message_hil_gps(msg);
+        return_value = true;
+        break;
+    case MAVLINK_MSG_ID_ASIO_STATUS:
+        handle_message_asio_status(msg);
         return_value = true;
         break;
 
@@ -241,6 +298,10 @@ bool GPSDriverMavlink::handle_message(mavlink_message_t *msg)
     }
 
     return return_value;
+}
+
+void GPSDriverMavlink::handle_message_heartbit(mavlink_message_t *msg)
+{
 }
 
 void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
@@ -265,8 +326,8 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
     _gps_position->c_variance_rad = 0.5f;
     _gps_position->fix_type = hil_gps.fix_type;
 
-    _gps_position->eph = (float) hil_gps.eph * 1e-2f; // cm -> m
-    _gps_position->epv = (float) hil_gps.epv * 1e-2f; // cm -> m
+    _gps_position->eph = hil_gps.eph; //(float) hil_gps.eph * 1e-2f; // cm -> m
+    _gps_position->epv = hil_gps.epv; //(float) hil_gps.epv * 1e-2f; // cm -> m
 
     _gps_position->hdop = _gps_position->eph;
     _gps_position->vdop = _gps_position->epv;
@@ -294,6 +355,12 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
     _gps_position->timestamp = hrt_absolute_time();
 
     is_hil_data_recieved = true;
+}
+
+void GPSDriverMavlink::handle_message_asio_status(mavlink_message_t *msg)
+{
+    mavlink_asio_status_t asio_status;
+    mavlink_msg_asio_status_decode(msg, &asio_status);
 }
 
 void GPSDriverMavlink::receiveWait(unsigned timeout_min)
@@ -436,21 +503,42 @@ void GPSDriverMavlink::update_device_frequently()
     static hrt_abstime last_rate_mavlink_gps_raw_int_msg_update = hrt_absolute_time();
     static hrt_abstime last_rate_mavlink_global_position_int_msg_update = hrt_absolute_time();
 
+    vehicle_command_s cmd{};
     sensor_gps_s main_gps_data;
     vehicle_attitude_s actual_attitude;
 
-    timer_init_location = hrt_absolute_time();
-    if (initialized_time > 0 && (timer_init_location - start_timer_init_location) > (initialized_time * 1000 * 1000) && !is_hil_data_recieved)
+    set_asio_init_location();
+
+    if (_command_sub.update(&cmd))
     {
-        mavlink_mavlink_command_long_msg.command = 40604;
-        mavlink_mavlink_command_long_msg.param5 = initialized_lattitude;
-        mavlink_mavlink_command_long_msg.param6 = initialized_longitude;
+        //@todo Vlad AERIAL_OBOX_STATUS 40601
+        if (cmd.command == 40601)
+        {
+            if (commandParamToInt(cmd.param1) == 1)
+            {
+                PX4_INFO("Received VEHICLE_CMD_DO_TRIGGER_CONTROL enable");
+            }
+            else if (commandParamToInt(cmd.param1) == 0)
+            {
+                PX4_INFO("Received VEHICLE_CMD_DO_TRIGGER_CONTROL disable");
+            }
 
-        send_mavlink_command_long_message(&mavlink_mavlink_command_long_msg);
+            if (commandParamToInt(cmd.param2) == 1)
+            {
+                        }
 
-        start_timer_init_location = hrt_absolute_time();
+            // // Acknowledge the command
+            // vehicle_command_ack_s command_ack{};
+
+            // command_ack.timestamp = hrt_absolute_time();
+            // command_ack.command = cmd.command;
+            // command_ack.result = (uint8_t) vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
+            // command_ack.target_system = cmd.source_system;
+            // command_ack.target_component = cmd.source_component;
+
+            // _command_ack_pub.publish(command_ack);
+        }
     }
-
     if (_sensor_gps_sub.updated())
     {
         if (_sensor_gps_sub.copy(&main_gps_data))
@@ -521,18 +609,18 @@ void GPSDriverMavlink::update_device_frequently()
             mavlink_gps_raw_int_msg.lat = main_gps_data.lat;
             mavlink_gps_raw_int_msg.lon = main_gps_data.lon;
             mavlink_gps_raw_int_msg.alt = main_gps_data.alt;
-            mavlink_gps_raw_int_msg.eph = 79;                    //(uint16_t) (main_gps_data.eph * 100.0); //*100 check it
-            mavlink_gps_raw_int_msg.epv = 127;                   // (uint16_t) (main_gps_data.epv * 100.0); //*100 check it
-            mavlink_gps_raw_int_msg.vel = main_gps_data.vel_m_s; // check it
+            mavlink_gps_raw_int_msg.eph = (uint16_t) (main_gps_data.eph * 100.0); // 79
+            mavlink_gps_raw_int_msg.epv = (uint16_t) (main_gps_data.epv * 100.0); // 127
+            mavlink_gps_raw_int_msg.vel = main_gps_data.vel_m_s;                  // check it
             mavlink_gps_raw_int_msg.cog = main_gps_data.cog_rad;
             mavlink_gps_raw_int_msg.fix_type = main_gps_data.fix_type;
-            mavlink_gps_raw_int_msg.satellites_visible = 11; // main_gps_data.satellites_used;
+            mavlink_gps_raw_int_msg.satellites_visible = main_gps_data.satellites_used; // 11
             mavlink_gps_raw_int_msg.alt_ellipsoid = main_gps_data.alt_ellipsoid;
             mavlink_gps_raw_int_msg.h_acc = 0;
             mavlink_gps_raw_int_msg.v_acc = 0;
             mavlink_gps_raw_int_msg.vel_acc = 0;
             mavlink_gps_raw_int_msg.hdg_acc = 0;
-            mavlink_gps_raw_int_msg.yaw = 708; // 25955; //(uint16_t) main_gps_data.heading;
+            mavlink_gps_raw_int_msg.yaw = (uint16_t) main_gps_data.heading; // 708
 
             mavlink_global_position_int_msg.lat = main_gps_data.lat;
             mavlink_global_position_int_msg.lon = main_gps_data.lon;
@@ -575,7 +663,7 @@ void GPSDriverMavlink::update_device_frequently()
 
     hrt_abstime actual_rate_update = hrt_absolute_time();
     hrt_abstime attitude_update_time = actual_rate_update - last_rate_mavlink_attitude_msg_update;
-    if (attitude_update_time > RATE_GPS_RAW_INT_PERIOD)
+    if (attitude_update_time > RATE_ATTITUDE_PERIOD)
     {
         send_mavlink_attitude_message(&mavlink_attitude_msg);
         last_rate_mavlink_attitude_msg_update = hrt_absolute_time();
