@@ -361,6 +361,30 @@ void GPSDriverMavlink::handle_message_asio_status(mavlink_message_t *msg)
 {
     mavlink_asio_status_t asio_status;
     mavlink_msg_asio_status_decode(msg, &asio_status);
+
+    //@todo Vlad publish arial obox status message
+    _report_arial_obox_status.timestamp = hrt_absolute_time();
+    _report_arial_obox_status.error = asio_status.error;
+    _report_arial_obox_status.pitch_offset = asio_status.pitch_offset;
+    _report_arial_obox_status.roll_offset = asio_status.roll_offset;
+    _report_arial_obox_status.reserved_2 = asio_status.reserved_2;
+    _report_arial_obox_status.version = asio_status.version;
+    _report_arial_obox_status.temperature = asio_status.temperature;
+    _report_arial_obox_status.nav_state = asio_status.nav_state;
+    _report_arial_obox_status.nav_output = asio_status.nav_output;
+    _report_arial_obox_status.gps_jamming_state = asio_status.gps_jamming_state;
+    _report_arial_obox_status.active_sensor = asio_status.active_sensor;
+    _report_arial_obox_status.active_rec = asio_status.active_rec;
+    _report_arial_obox_status.active_db_rec = asio_status.active_db_rec;
+    _report_arial_obox_status.active_nav = asio_status.active_nav;
+    _report_arial_obox_status.active_slam = asio_status.active_slam;
+    _report_arial_obox_status.battery = asio_status.battery;
+    _report_arial_obox_status.sys_state = asio_status.sys_state;
+    _report_arial_obox_status.reserved = asio_status.reserved;
+    _report_arial_obox_status.map_warning = asio_status.map_warning;
+    _report_arial_obox_status.calibration_state = asio_status.calibration_state;
+
+    _arial_obox_status_pub.publish(_report_arial_obox_status);
 }
 
 void GPSDriverMavlink::receiveWait(unsigned timeout_min)
@@ -375,7 +399,7 @@ void GPSDriverMavlink::receiveWait(unsigned timeout_min)
 
 int GPSDriverMavlink::receive(unsigned timeout)
 {
-    uint8_t buf[100];
+    uint8_t buf[150] = {};
     mavlink_message_t msg{};
     mavlink_status_t _status{};
 
@@ -395,13 +419,6 @@ int GPSDriverMavlink::receive(unsigned timeout)
         {
             /* something went wrong when polling */
             return -1;
-        }
-        else if (ret == 0)
-        {
-            /* Timeout while polling or just nothing read if reading, let's
-             * stay here, and use timeout below. */
-
-            // return -1;
         }
         else if (ret > 0)
         {
@@ -525,7 +542,7 @@ void GPSDriverMavlink::update_device_frequently()
 
             if (commandParamToInt(cmd.param2) == 1)
             {
-                        }
+            }
 
             // // Acknowledge the command
             // vehicle_command_ack_s command_ack{};

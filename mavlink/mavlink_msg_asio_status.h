@@ -34,8 +34,8 @@ typedef struct __mavlink_asio_status_t {
 #define MAVLINK_MSG_ID_40601_LEN 35
 #define MAVLINK_MSG_ID_40601_MIN_LEN 35
 
-#define MAVLINK_MSG_ID_ASIO_STATUS_CRC 48
-#define MAVLINK_MSG_ID_40601_CRC 48
+#define MAVLINK_MSG_ID_ASIO_STATUS_CRC 201 //48
+#define MAVLINK_MSG_ID_40601_CRC 201 //48
 
 
 

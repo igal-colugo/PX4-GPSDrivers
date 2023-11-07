@@ -50,8 +50,9 @@
             {397, 182, 108, 108, 0, 0, 0}, {400, 110, 254, 254, 3, 4, 5}, {401, 183, 6, 6, 3, 4, 5}, {410, 160, 53, 53, 0, 0, 0}, {411, 106, 3, 3, 0, 0, 0}, {412, 33, 6, 6, 3, 4, 5},       \
             {413, 77, 7, 7, 3, 4, 5}, {9000, 113, 137, 137, 0, 0, 0}, {9005, 117, 34, 34, 0, 0, 0}, {12900, 114, 44, 44, 3, 0, 1}, {12901, 254, 59, 59, 3, 30, 31},                          \
             {12902, 140, 53, 53, 3, 4, 5}, {12903, 249, 46, 46, 3, 0, 1}, {12904, 77, 54, 54, 3, 28, 29}, {12905, 49, 43, 43, 3, 0, 1}, {12915, 94, 249, 249, 3, 0, 1},                      \
+            {12920, 20, 5, 5, 0, 0, 0},                                                                                                                                                      \
         {                                                                                                                                                                                    \
-            12920, 20, 5, 5, 0, 0, 0                                                                                                                                                         \
+            40601, 201, 35, 35, 0, 0, 0                                                                                                                                                       \
         }                                                                                                                                                                                    \
     }
 #endif
@@ -1073,17 +1074,21 @@ static inline uint8_t mavlink_parse_char(uint8_t chan, uint8_t c, mavlink_messag
         // we got a bad CRC. Treat as a parse failure
         mavlink_message_t *rxmsg = mavlink_get_channel_buffer(chan);
         mavlink_status_t *status = mavlink_get_channel_status(chan);
+
         _mav_parse_error(status);
         status->msg_received = MAVLINK_FRAMING_INCOMPLETE;
         status->parse_state = MAVLINK_PARSE_STATE_IDLE;
+
         if (c == MAVLINK_STX)
         {
             status->parse_state = MAVLINK_PARSE_STATE_GOT_STX;
             rxmsg->len = 0;
             mavlink_start_checksum(rxmsg);
         }
+
         return 0;
     }
+
     return msg_received;
 }
 

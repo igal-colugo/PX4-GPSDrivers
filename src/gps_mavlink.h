@@ -47,7 +47,9 @@
 #include <lib/drivers/device/Device.hpp>
 #include <lib/parameters/param.h>
 #include <px4_platform_common/atomic.h>
+#include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
+#include <uORB/topics/arial_obox_status.h>
 #include <uORB/topics/sensor_gps.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_command.h>
@@ -147,6 +149,7 @@ class GPSDriverMavlink : public GPSBaseStationSupport
 
     sensor_gps_s *_gps_position{nullptr};
     satellite_info_s *_satellite_info{nullptr};
+    arial_obox_status_s _report_arial_obox_status{}; ///< uORB topic for arial obox status
 
     NMEACommand _waiting_for_command;
 
@@ -159,6 +162,8 @@ class GPSDriverMavlink : public GPSBaseStationSupport
     uORB::Subscription _sensor_gps_sub{ORB_ID(sensor_gps)};
     uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
     uORB::Subscription _command_sub{ORB_ID(vehicle_command)};
+
+    uORB::Publication<arial_obox_status_s> _arial_obox_status_pub{ORB_ID(arial_obox_status)};
 
     EulerAngles angles = EulerAngles();
     Quaternion q = Quaternion();
