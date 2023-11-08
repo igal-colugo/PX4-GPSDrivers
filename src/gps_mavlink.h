@@ -40,6 +40,7 @@
 #include "../../definitions.h"
 #include "../mavlink/mavlink_helpers.h"
 #include "../mavlink/mavlink_msg_asio_status.h"
+#include "../mavlink/mavlink_msg_command_ack.h"
 #include "../mavlink/mavlink_msg_hil_gps.h"
 #include "../mavlink/mavlink_types.h"
 #include "base_station.h"
@@ -53,13 +54,18 @@
 #include <uORB/topics/sensor_gps.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_command.h>
+#include <uORB/topics/vehicle_command_ack.h>
 
 #include <math.h>
 
 #define MAVLINK_MSG_ID_HEARTBIT 0
 #define MAVLINK_MSG_ID_HIL_GPS 113
+#define MAV_CMD_ASIO_SET_SENSOR 40601
+#define MAV_CMD_ASIO_SET_REC 40602
+#define MAV_CMD_ASIO_SET_NAV_MODE 40603
 #define MAV_CMD_ASIO_SET_INIT_LOC 40604
 #define MAV_CMD_ASIO_RESET 40605
+#define MAV_CMD_ASIO_CAL 40606
 #define RATE_EXTENDED_SYS_STATE_PERIOD 1000000 // 1 Hz
 #define RATE_GPS_RAW_INT_PERIOD 200000         // 5 Hz
 #define RATE_ATTITUDE_PERIOD 90000             // 11 Hz
@@ -93,7 +99,7 @@ class GPSDriverMavlink : public GPSBaseStationSupport
     int configure(unsigned &baudrate, const GPSConfig &config) override;
     int receive(unsigned timeout) override;
     int update_device(int argc, char *argv[]);
-    void update_device_frequently();
+    bool update_device_frequently();
 
   private:
     enum class NMEACommand
@@ -114,6 +120,7 @@ class GPSDriverMavlink : public GPSBaseStationSupport
 
     void get_parameters();
     bool handle_message(mavlink_message_t *msg);
+    void handle_message_acknowledge(mavlink_message_t *msg);
     void handle_message_heartbit(mavlink_message_t *msg);
     void handle_message_hil_gps(mavlink_message_t *msg);
     void handle_message_asio_status(mavlink_message_t *msg);
@@ -125,8 +132,13 @@ class GPSDriverMavlink : public GPSBaseStationSupport
     void send_mavlink_command_long_message(mavlink_command_long_t *msg);
     void send_mavlink_packet(uint32_t msgid, const char *packet, uint8_t min_length, uint8_t length, uint8_t crc_extra);
 
-    void set_asio_init_location();
+    void set_asio_auto_init_location();
+    void set_asio_init_location(float lattitude, float longitude);
     void set_asio_init_location_2();
+    void set_asio_sensor_type(uint8_t day_thermal);
+    void set_asio_recording_type(uint8_t type);
+    void set_asio_navigation_mode(uint8_t mode);
+    void set_asio_calibration();
 
     /**
      * receive data for at least the specified amount of time
@@ -164,6 +176,7 @@ class GPSDriverMavlink : public GPSBaseStationSupport
     uORB::Subscription _command_sub{ORB_ID(vehicle_command)};
 
     uORB::Publication<arial_obox_status_s> _arial_obox_status_pub{ORB_ID(arial_obox_status)};
+    uORB::Publication<vehicle_command_ack_s> _command_ack_pub{ORB_ID(vehicle_command_ack)};
 
     EulerAngles angles = EulerAngles();
     Quaternion q = Quaternion();

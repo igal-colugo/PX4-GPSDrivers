@@ -228,28 +228,132 @@ void GPSDriverMavlink::send_mavlink_command_long_message(mavlink_command_long_t 
     send_mavlink_packet(MAVLINK_MSG_ID_COMMAND_LONG, (const char *) msg, MAVLINK_MSG_ID_COMMAND_LONG_MIN_LEN, MAVLINK_MSG_ID_COMMAND_LONG_LEN, MAVLINK_MSG_ID_COMMAND_LONG_CRC);
 }
 
-void GPSDriverMavlink::set_asio_init_location()
+void GPSDriverMavlink::set_asio_auto_init_location()
 {
     timer_init_location = hrt_absolute_time();
     if (initialized_time > 0 && (timer_init_location - start_timer_init_location) > (initialized_time * 1000 * 1000) && !is_hil_data_recieved)
     {
         // MAV_CMD_ASIO_SET_INIT_LOC
+        mavlink_mavlink_command_long_msg = {}; // reset command long structure
         mavlink_mavlink_command_long_msg.command = MAV_CMD_ASIO_SET_INIT_LOC;
         mavlink_mavlink_command_long_msg.param5 = (float) initialized_lattitude * 1e-7f;
         mavlink_mavlink_command_long_msg.param6 = (float) initialized_longitude * 1e-7f;
 
         send_mavlink_command_long_message(&mavlink_mavlink_command_long_msg);
 
-        // px4_usleep(1000);
-
-        // MAV_CMD_ASIO_RESET
-        // mavlink_mavlink_command_long_msg = {};
-        // mavlink_mavlink_command_long_msg.command = MAV_CMD_ASIO_RESET;
-
-        // send_mavlink_command_long_message(&mavlink_mavlink_command_long_msg);
-
         GPSDriverMavlink::start_timer_init_location = hrt_absolute_time();
     }
+}
+
+void GPSDriverMavlink::set_asio_init_location(float lattitude, float longitude)
+{
+    // MAV_CMD_ASIO_SET_INIT_LOC
+    mavlink_mavlink_command_long_msg = {}; // reset command long structure
+    mavlink_mavlink_command_long_msg.command = MAV_CMD_ASIO_SET_INIT_LOC;
+    mavlink_mavlink_command_long_msg.param5 = lattitude;
+    mavlink_mavlink_command_long_msg.param6 = longitude;
+
+    send_mavlink_command_long_message(&mavlink_mavlink_command_long_msg);
+}
+
+void GPSDriverMavlink::set_asio_sensor_type(uint8_t type)
+{
+    // MAV_CMD_ASIO_SET_INIT_LOC
+    /*
+            Aerial OBOX - CN
+            ICD & Specification
+            For Non-Commercial / HLS Application
+    2.4.5.3 All commands update the system configuration & need restart system in
+                order to take effect. Command should preform only on ground.
+    */
+    if (type >= 1 && type <= 2)
+    {
+        mavlink_mavlink_command_long_msg = {}; // reset command long structure
+        mavlink_mavlink_command_long_msg.command = MAV_CMD_ASIO_SET_SENSOR;
+        mavlink_mavlink_command_long_msg.param1 = (float) type;
+
+        send_mavlink_command_long_message(&mavlink_mavlink_command_long_msg);
+
+        px4_usleep(1000);
+
+        // MAV_CMD_ASIO_RESET
+        mavlink_mavlink_command_long_msg = {};
+        mavlink_mavlink_command_long_msg.command = MAV_CMD_ASIO_RESET;
+
+        send_mavlink_command_long_message(&mavlink_mavlink_command_long_msg);
+    }
+}
+
+void GPSDriverMavlink::set_asio_recording_type(uint8_t type)
+{
+    // MAV_CMD_ASIO_SET_INIT_LOC
+    /*
+            Aerial OBOX - CN
+            ICD & Specification
+            For Non-Commercial / HLS Application
+    2.4.5.3 All commands update the system configuration & need restart system in
+                order to take effect. Command should preform only on ground.
+    */
+    if (type >= 0 && type <= 3)
+    {
+        mavlink_mavlink_command_long_msg = {}; // reset command long structure
+        mavlink_mavlink_command_long_msg.command = MAV_CMD_ASIO_SET_REC;
+        mavlink_mavlink_command_long_msg.param1 = (float) type;
+
+        send_mavlink_command_long_message(&mavlink_mavlink_command_long_msg);
+
+        px4_usleep(1000);
+
+        // MAV_CMD_ASIO_RESET
+        mavlink_mavlink_command_long_msg = {};
+        mavlink_mavlink_command_long_msg.command = MAV_CMD_ASIO_RESET;
+
+        send_mavlink_command_long_message(&mavlink_mavlink_command_long_msg);
+    }
+}
+
+void GPSDriverMavlink::set_asio_navigation_mode(uint8_t mode)
+{
+    // MAV_CMD_ASIO_SET_INIT_LOC
+    /*
+            Aerial OBOX - CN
+            ICD & Specification
+            For Non-Commercial / HLS Application
+    2.4.5.3 All commands update the system configuration & need restart system in
+                order to take effect. Command should preform only on ground.
+    */
+    if (mode >= 1 && mode <= 3)
+    {
+        mavlink_mavlink_command_long_msg = {}; // reset command long structure
+        mavlink_mavlink_command_long_msg.command = MAV_CMD_ASIO_SET_NAV_MODE;
+        mavlink_mavlink_command_long_msg.param1 = (float) mode;
+
+        send_mavlink_command_long_message(&mavlink_mavlink_command_long_msg);
+
+        px4_usleep(1000);
+
+        // MAV_CMD_ASIO_RESET
+        mavlink_mavlink_command_long_msg = {};
+        mavlink_mavlink_command_long_msg.command = MAV_CMD_ASIO_RESET;
+
+        send_mavlink_command_long_message(&mavlink_mavlink_command_long_msg);
+    }
+}
+
+void GPSDriverMavlink::set_asio_calibration()
+{
+    // MAV_CMD_ASIO_SET_INIT_LOC
+    /*
+            Aerial OBOX - CN
+            ICD & Specification
+            For Non-Commercial / HLS Application
+    2.4.5.3 All commands update the system configuration & need restart system in
+                order to take effect. Command should preform only on ground.
+    */
+    mavlink_mavlink_command_long_msg = {}; // reset command long structure
+    mavlink_mavlink_command_long_msg.command = MAV_CMD_ASIO_CAL;
+
+    send_mavlink_command_long_message(&mavlink_mavlink_command_long_msg);
 }
 
 void GPSDriverMavlink::set_asio_init_location_2()
@@ -292,12 +396,32 @@ bool GPSDriverMavlink::handle_message(mavlink_message_t *msg)
         handle_message_asio_status(msg);
         return_value = true;
         break;
+    case MAVLINK_MSG_ID_COMMAND_ACK:
+        handle_message_acknowledge(msg);
+        return_value = true;
+        break;
 
     default:
         break;
     }
 
     return return_value;
+}
+
+void GPSDriverMavlink::handle_message_acknowledge(mavlink_message_t *msg)
+{
+    mavlink_command_ack_t ack;
+    mavlink_msg_command_ack_decode(msg, &ack);
+
+    // Acknowledge the command
+    vehicle_command_ack_s command_ack{};
+    command_ack.timestamp = hrt_absolute_time();
+    command_ack.command = ack.command;
+    command_ack.result = ack.result; //(uint8_t) vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
+    command_ack.target_system = ack.target_system;
+    command_ack.target_component = ack.target_component;
+
+    _command_ack_pub.publish(command_ack);
 }
 
 void GPSDriverMavlink::handle_message_heartbit(mavlink_message_t *msg)
@@ -315,6 +439,7 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
     device_id.devid_s.bus_type = device::Device::DeviceBusType::DeviceBusType_MAVLINK;
     device_id.devid_s.address = msg->sysid;
     device_id.devid_s.devtype = DRV_GPS_DEVTYPE_SIM;
+
     _gps_position->device_id = device_id.devid;
 
     _gps_position->lat = hil_gps.lat;
@@ -405,7 +530,10 @@ int GPSDriverMavlink::receive(unsigned timeout)
 
     int handled = 0;
 
-    update_device_frequently();
+    if (update_device_frequently() == false)
+    {
+        return -1;
+    }
 
     /* timeout additional to poll */
     uint64_t time_started = gps_absolute_time();
@@ -514,8 +642,10 @@ int GPSDriverMavlink::update_device(int argc, char *argv[])
     PX4_INFO("exiting");
 }
 
-void GPSDriverMavlink::update_device_frequently()
+bool GPSDriverMavlink::update_device_frequently()
 {
+    bool return_value = true;
+
     static hrt_abstime last_rate_mavlink_attitude_msg_update = hrt_absolute_time();
     static hrt_abstime last_rate_mavlink_gps_raw_int_msg_update = hrt_absolute_time();
     static hrt_abstime last_rate_mavlink_global_position_int_msg_update = hrt_absolute_time();
@@ -524,36 +654,19 @@ void GPSDriverMavlink::update_device_frequently()
     sensor_gps_s main_gps_data;
     vehicle_attitude_s actual_attitude;
 
-    set_asio_init_location();
+    set_asio_auto_init_location();
 
     if (_command_sub.update(&cmd))
     {
         //@todo Vlad AERIAL_OBOX_STATUS 40601
-        if (cmd.command == 40601)
+        if (cmd.command == MAV_CMD_ASIO_SET_SENSOR)
         {
-            if (commandParamToInt(cmd.param1) == 1)
-            {
-                PX4_INFO("Received VEHICLE_CMD_DO_TRIGGER_CONTROL enable");
-            }
-            else if (commandParamToInt(cmd.param1) == 0)
-            {
-                PX4_INFO("Received VEHICLE_CMD_DO_TRIGGER_CONTROL disable");
-            }
-
-            if (commandParamToInt(cmd.param2) == 1)
-            {
-            }
-
-            // // Acknowledge the command
-            // vehicle_command_ack_s command_ack{};
-
-            // command_ack.timestamp = hrt_absolute_time();
-            // command_ack.command = cmd.command;
-            // command_ack.result = (uint8_t) vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
-            // command_ack.target_system = cmd.source_system;
-            // command_ack.target_component = cmd.source_component;
-
-            // _command_ack_pub.publish(command_ack);
+            set_asio_sensor_type((uint8_t) commandParamToInt(cmd.param1));
+            return_value = false;
+        }
+        if (cmd.command == MAV_CMD_ASIO_SET_INIT_LOC)
+        {
+            set_asio_init_location((float) cmd.param5, (float) cmd.param6);
         }
     }
     if (_sensor_gps_sub.updated())
@@ -699,6 +812,8 @@ void GPSDriverMavlink::update_device_frequently()
         send_mavlink_global_position_int_message(&mavlink_global_position_int_msg);
         last_rate_mavlink_global_position_int_msg_update = hrt_absolute_time();
     }
+
+    return return_value;
 }
 
 void GPSDriverMavlink::engage(void *arg)
