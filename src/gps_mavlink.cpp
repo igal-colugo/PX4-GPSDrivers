@@ -95,7 +95,7 @@ void GPSDriverMavlink::send_mavlink_packet(uint32_t msgid, const char *packet, u
     uint16_t checksum;
     uint8_t buf[MAVLINK_NUM_HEADER_BYTES];
     uint8_t ck[2];
-    mavlink_status_t *status = new mavlink_status_t();
+    static mavlink_status_t status{};
     uint8_t header_len = MAVLINK_CORE_HEADER_LEN;
     uint8_t signature_len = 0;
     uint8_t signature[MAVLINK_SIGNATURE_BLOCK_LEN];
@@ -110,13 +110,13 @@ void GPSDriverMavlink::send_mavlink_packet(uint32_t msgid, const char *packet, u
         if (msgid > 255)
         {
             // can't send 16 bit messages
-            _mav_parse_error(status);
+            _mav_parse_error(&status);
             return;
         }
         header_len = MAVLINK_CORE_HEADER_MAVLINK1_LEN;
         buf[0] = MAVLINK_STX_MAVLINK1;
         buf[1] = length;
-        buf[2] = status->current_tx_seq;
+        buf[2] = status.current_tx_seq;
         buf[3] = 1; // mavlink_system.sysid;
         buf[4] = 0; // mavlink_system.compid;
         buf[5] = msgid & 0xFF;
@@ -133,14 +133,14 @@ void GPSDriverMavlink::send_mavlink_packet(uint32_t msgid, const char *packet, u
         buf[1] = length;
         buf[2] = incompat_flags;
         buf[3] = 0; // compat_flags
-        buf[4] = status->current_tx_seq;
+        buf[4] = status.current_tx_seq;
         buf[5] = 1; // mavlink_system.sysid;
         buf[6] = 1; // mavlink_system.compid;
         buf[7] = msgid & 0xFF;
         buf[8] = (msgid >> 8) & 0xFF;
         buf[9] = (msgid >> 16) & 0xFF;
     }
-    status->current_tx_seq++;
+    status.current_tx_seq++;
     checksum = crc_calculate((const uint8_t *) &buf[1], header_len);
     crc_accumulate_buffer(&checksum, packet, length);
     crc_accumulate(crc_extra, &checksum);
@@ -164,25 +164,10 @@ void GPSDriverMavlink::send_mavlink_packet(uint32_t msgid, const char *packet, u
     if (signing)
     {
         // possibly add a signature
-        signature_len = mavlink_sign_packet(status->signing, signature, buf, header_len + 1, (const uint8_t *) packet, length, ck);
+        signature_len = mavlink_sign_packet(status.signing, signature, buf, header_len + 1, (const uint8_t *) packet, length, ck);
     }
 
-    // MAVLINK_START_UART_SEND(chan, header_len + 3 + (uint16_t) length + (uint16_t) signature_len);
-    // _mavlink_send_uart(chan, (const char *) buf, header_len + 1);
-    // _mavlink_send_uart(chan, packet, length);
-    // _mavlink_send_uart(chan, (const char *) ck, 2);
-    // if (signature_len != 0)
-    // {
-    //     _mavlink_send_uart(chan, (const char *) signature, signature_len);
-    // }
-    // MAVLINK_END_UART_SEND(chan, header_len + 3 + (uint16_t) length + (uint16_t) signature_len);
-
-    //@todo Vlad implement creating and sending uart buffer
-    // uint8_t test_sending_buffer[56] = {0xFD, 0x2C, 0x00, 0x00, 0xB0, 0x01, 0x01, 0x18, 0x00, 0x00,   0x11, 0x3D, 0x54, 0x40, 0x00, 0x00, 0x00, 0x00,   0xC0,
-    //                                    0x5A, 0x03, 0x13,   0xCF, 0xF7, 0xB4, 0x14,  alt 0x8E, 0xB6, 0x00, 0x00, eph  0x4F, 0x00,  epv 0x7F, 0x00,  vel 0x08, 0x00, cog 0x00, 0x00,
-    //                                    fix type 0x03, sat 0x0A, alt el 0x99, 0xF9, 0x00, 0x00, hacc 0x9A, 0x0D, 0x00, 0x00, vacc 0x62, 0x13, 0x00, 0x00,  0xC4, 0x02,     0xEB, 0xF3};
     write((void *) sending_buffer, offset + length + 2); // 2-2 bytes of checksum
-    // write((void *) test_sending_buffer, 56); // 2-2 bytes of checksum
 }
 
 void GPSDriverMavlink::send_mavlink_message(mavlink_message_t *msg)
