@@ -41,6 +41,7 @@
 #include "../mavlink/mavlink_helpers.h"
 #include "../mavlink/mavlink_msg_asio_status.h"
 #include "../mavlink/mavlink_msg_command_ack.h"
+#include "../mavlink/mavlink_msg_heartbeat.h"
 #include "../mavlink/mavlink_msg_hil_gps.h"
 #include "../mavlink/mavlink_types.h"
 #include "base_station.h"
@@ -51,15 +52,18 @@
 #include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/arial_obox_status.h>
+#include <uORB/topics/home_position.h>
 #include <uORB/topics/sensor_gps.h>
+#include <uORB/topics/vehicle_air_data.h>
+#include <uORB/topics/vehicle_angular_velocity.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_command.h>
 #include <uORB/topics/vehicle_command_ack.h>
+#include <uORB/topics/vehicle_global_position.h>
+#include <uORB/topics/vehicle_local_position.h>
 
 #include <math.h>
 
-#define MAVLINK_MSG_ID_HEARTBIT 0
-#define MAVLINK_MSG_ID_HIL_GPS 113
 #define MAV_CMD_ASIO_SET_SENSOR 40601
 #define MAV_CMD_ASIO_SET_REC 40602
 #define MAV_CMD_ASIO_SET_NAV_MODE 40603
@@ -98,7 +102,6 @@ class GPSDriverMavlink : public GPSBaseStationSupport
     virtual ~GPSDriverMavlink();
     int configure(unsigned &baudrate, const GPSConfig &config) override;
     int receive(unsigned timeout) override;
-    int update_device(int argc, char *argv[]);
     bool update_device_frequently();
 
   private:
@@ -134,7 +137,6 @@ class GPSDriverMavlink : public GPSBaseStationSupport
 
     void set_asio_auto_init_location();
     void set_asio_init_location(float lattitude, float longitude);
-    void set_asio_init_location_2();
     void set_asio_sensor_type(uint8_t day_thermal);
     void set_asio_recording_type(uint8_t type);
     void set_asio_navigation_mode(uint8_t mode);
@@ -162,18 +164,29 @@ class GPSDriverMavlink : public GPSBaseStationSupport
     sensor_gps_s *_gps_position{nullptr};
     satellite_info_s *_satellite_info{nullptr};
     arial_obox_status_s _report_arial_obox_status{}; ///< uORB topic for arial obox status
+    vehicle_global_position_s gpos;
+    vehicle_local_position_s lpos;
+    home_position_s home{};
+    vehicle_air_data_s air_data{};
+    vehicle_command_s cmd{};
+    sensor_gps_s main_gps_data;
+    vehicle_attitude_s actual_attitude;
+    vehicle_angular_velocity_s angular_velocity{};
 
     NMEACommand _waiting_for_command;
-
     NMEACommandState _command_state{NMEACommandState::idle};
-
     OutputMode _output_mode{OutputMode::GPS};
 
     static px4::atomic_bool _is_initialized;
-    // static px4::atomic_bool _is_can_update_gps_raw_int;
+
     uORB::Subscription _sensor_gps_sub{ORB_ID(sensor_gps)};
     uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
     uORB::Subscription _command_sub{ORB_ID(vehicle_command)};
+    uORB::Subscription _gpos_sub{ORB_ID(vehicle_global_position)};
+    uORB::Subscription _lpos_sub{ORB_ID(vehicle_local_position)};
+    uORB::Subscription _home_sub{ORB_ID(home_position)};
+    uORB::Subscription _air_data_sub{ORB_ID(vehicle_air_data)};
+    uORB::Subscription _angular_velocity_sub{ORB_ID(vehicle_angular_velocity)};
 
     uORB::Publication<arial_obox_status_s> _arial_obox_status_pub{ORB_ID(arial_obox_status)};
     uORB::Publication<vehicle_command_ack_s> _command_ack_pub{ORB_ID(vehicle_command_ack)};
@@ -199,16 +212,20 @@ class GPSDriverMavlink : public GPSBaseStationSupport
     {
     };
 
-    /**
-     * Fires trigger
-     */
-    static void engage(void *arg);
+#pragma region Code not in use
 
-    /**
-     * Resets trigger
-     */
-    static void disengage(void *arg);
+    // /**
+    //  * Fires trigger
+    //  */
+    // static void engage(void *arg);
 
-    Quaternion convert_to_quaternion(double roll, double pitch, double yaw);
-    EulerAngles convert_to_euler_angles(Quaternion q);
+    // /**
+    //  * Resets trigger
+    //  */
+    // static void disengage(void *arg);
+
+    // Quaternion convert_to_quaternion(double roll, double pitch, double yaw);
+    // EulerAngles convert_to_euler_angles(Quaternion q);
+
+#pragma endregion
 };
