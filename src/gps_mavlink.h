@@ -173,6 +173,8 @@ class GPSDriverMavlink : public GPSBaseStationSupport
     vehicle_attitude_s actual_attitude;
     vehicle_angular_velocity_s angular_velocity{};
 
+    uint8_t system_error_nav_state = 0;
+
     NMEACommand _waiting_for_command;
     NMEACommandState _command_state{NMEACommandState::idle};
     OutputMode _output_mode{OutputMode::GPS};

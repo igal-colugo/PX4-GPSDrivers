@@ -417,8 +417,8 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
     _gps_position->c_variance_rad = 0.5f;
     _gps_position->fix_type = hil_gps.fix_type;
 
-    _gps_position->eph = hil_gps.eph; //(float) hil_gps.eph * 1e-2f; // cm -> m
-    _gps_position->epv = hil_gps.epv; //(float) hil_gps.epv * 1e-2f; // cm -> m
+    _gps_position->eph = (float) hil_gps.eph * 1e-2f; // cm -> m
+    _gps_position->epv = (float) hil_gps.epv * 1e-2f; // cm -> m
 
     _gps_position->hdop = _gps_position->eph;
     _gps_position->vdop = _gps_position->epv;
@@ -442,6 +442,8 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
 
     _gps_position->heading = NAN;
     _gps_position->heading_offset = NAN;
+
+    system_error_nav_state = (uint8_t) hil_gps.eph;
 
     _gps_position->timestamp = hrt_absolute_time();
 
@@ -471,7 +473,7 @@ void GPSDriverMavlink::handle_message_asio_status(mavlink_message_t *msg)
     _report_arial_obox_status.active_slam = asio_status.active_slam;
     _report_arial_obox_status.battery = asio_status.battery;
     _report_arial_obox_status.sys_state = asio_status.sys_state;
-    _report_arial_obox_status.reserved = asio_status.reserved;
+    _report_arial_obox_status.reserved = system_error_nav_state; // asio_status.reserved;
     _report_arial_obox_status.map_warning = asio_status.map_warning;
     _report_arial_obox_status.calibration_state = asio_status.calibration_state;
 
