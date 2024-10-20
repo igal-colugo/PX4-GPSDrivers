@@ -417,7 +417,8 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
     _gps_position->c_variance_rad = 0.5f;
     _gps_position->fix_type = hil_gps.fix_type;
 
-    _gps_position->eph = (float) hil_gps.eph * 1e-2f; // cm -> m
+    float ephTemp = (float) hil_gps.eph * 0.1f;//workaround for floating point croping
+    _gps_position->eph = ephTemp * 0.1f;
     _gps_position->epv = (float) hil_gps.epv * 1e-2f; // cm -> m
 
     _gps_position->hdop = _gps_position->eph;
