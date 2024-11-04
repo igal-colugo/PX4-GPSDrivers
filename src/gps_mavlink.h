@@ -64,6 +64,10 @@
 
 #include <math.h>
 
+#include <uORB/topics/debug_key_value.h>
+
+
+
 #define MAV_CMD_ASIO_SET_SENSOR 40601
 #define MAV_CMD_ASIO_SET_REC 40602
 #define MAV_CMD_ASIO_SET_NAV_MODE 40603
@@ -120,6 +124,12 @@ class GPSDriverMavlink : public GPSBaseStationSupport
         nack,
         received
     };
+
+    //for workarond
+    uORB::Publication<debug_key_value_s> _debug_key_value_pub{ORB_ID(debug_key_value)};
+    int32_t _workaround_alt{0};
+    float _ref_alt{0};
+    //////////
 
     void get_parameters();
     bool handle_message(mavlink_message_t *msg);
@@ -190,6 +200,7 @@ class GPSDriverMavlink : public GPSBaseStationSupport
     uORB::Subscription _air_data_sub{ORB_ID(vehicle_air_data)};
     uORB::Subscription _angular_velocity_sub{ORB_ID(vehicle_angular_velocity)};
 
+
     uORB::Publication<arial_obox_status_s> _arial_obox_status_pub{ORB_ID(arial_obox_status)};
     uORB::Publication<vehicle_command_ack_s> _command_ack_pub{ORB_ID(vehicle_command_ack)};
 
@@ -206,7 +217,7 @@ class GPSDriverMavlink : public GPSBaseStationSupport
     int32_t initialized_time = -1;
     hrt_abstime timer_init_location = 0;
     bool is_hil_data_recieved = false;
-
+    int32_t _c_debug_val = 0;
     struct hrt_call _engagecall
     {
     };

@@ -88,6 +88,9 @@ void GPSDriverMavlink::get_parameters()
             GPSDriverMavlink::start_timer_init_location = hrt_absolute_time();
         }
     }
+
+    parameter_handle = param_find("C_DEBUG");
+    param_get(parameter_handle, &_c_debug_val);
 }
 
 void GPSDriverMavlink::send_mavlink_packet(uint32_t msgid, const char *packet, uint8_t min_length, uint8_t length, uint8_t crc_extra)
@@ -411,6 +414,33 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
     _gps_position->lat = hil_gps.lat;
     _gps_position->lon = hil_gps.lon;
     _gps_position->alt = hil_gps.alt;
+
+
+
+
+
+
+    if(_c_debug_val == 9){
+        _gps_position->alt = _workaround_alt; //*1000//hil_gps.alt; WA
+    }
+
+    if(_c_debug_val == 10){
+        _gps_position->alt = (-lpos.z + lpos.ref_alt) * 1000.0f; //*1000//hil_gps.alt; WA
+    }
+
+    if(_c_debug_val == 9 || _c_debug_val == 10){
+        debug_key_value_s debug_topic{};
+
+        debug_topic.timestamp = hrt_absolute_time();
+        char colugoD[] = "clgAltD";
+        memcpy(debug_topic.key, colugoD, sizeof(debug_topic.key));
+        debug_topic.key[sizeof(colugoD) - 1] = '\0'; // enforce null termination
+        debug_topic.value = (_gps_position->alt * 0.001f);
+
+        _debug_key_value_pub.publish(debug_topic);
+    }
+
+
     _gps_position->alt_ellipsoid = hil_gps.alt;
 
     _gps_position->s_variance_m_s = 0.25f;
@@ -730,6 +760,10 @@ bool GPSDriverMavlink::update_device_frequently()
             if (lpos.z_valid && lpos.z_global)
             {
                 mavlink_global_position_int_msg.alt = (-lpos.z + lpos.ref_alt) * 1000.0f;
+
+                if(_c_debug_val == 9){
+                    _ref_alt = lpos.ref_alt;
+                }
             }
             else
             {
@@ -767,6 +801,17 @@ bool GPSDriverMavlink::update_device_frequently()
 
             mavlink_global_position_int_msg.hdg = math::degrees(matrix::wrap_2pi(lpos.heading)) * 100.0f;
         }
+
+        ///workaround - take baro in any case
+
+        if(_c_debug_val == 9){
+            _air_data_sub.copy(&air_data);
+            if (air_data.timestamp > 0)
+            {
+                _workaround_alt = (air_data.baro_alt_meter + _ref_alt) * 1000.0f;
+            }
+        }
+
     }
     if (_vehicle_attitude_sub.updated())
     {
