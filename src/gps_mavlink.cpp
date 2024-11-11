@@ -420,7 +420,7 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
 
 
 
-    if(_c_debug_val == 9){
+    if(_c_debug_val == 9 || _c_debug_val == 11){
         _gps_position->alt = _workaround_alt; //*1000//hil_gps.alt; WA
     }
 
@@ -812,6 +812,20 @@ bool GPSDriverMavlink::update_device_frequently()
             }
         }
 
+        if(_c_debug_val == 11){
+            sensor_gps_s gps0_data;
+            if(_sensor_gps0_sub.updated())
+            {
+                if (_sensor_gps0_sub.copy(&gps0_data))
+                {
+                    _workaround_alt = gps0_data.alt;
+                }
+
+            }
+
+
+        }
+
     }
     if (_vehicle_attitude_sub.updated())
     {
@@ -841,7 +855,6 @@ bool GPSDriverMavlink::update_device_frequently()
             mavlink_attitude_msg.roll = euler.phi();
             mavlink_attitude_msg.pitch = euler.theta();
             mavlink_attitude_msg.yaw = euler.psi();
-
             mavlink_attitude_msg.rollspeed = angular_velocity.xyz[0];
             mavlink_attitude_msg.pitchspeed = angular_velocity.xyz[1];
             mavlink_attitude_msg.yawspeed = angular_velocity.xyz[2];
