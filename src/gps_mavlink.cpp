@@ -420,7 +420,7 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
 
 
 
-    if(_c_debug_val == 9 || _c_debug_val == 11){
+    if(_c_debug_val == 9 || _c_debug_val == 11 || _c_debug_val ==7){
         _gps_position->alt = _workaround_alt; //*1000//hil_gps.alt; WA
     }
 
@@ -428,7 +428,7 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
         _gps_position->alt = (-lpos.z + lpos.ref_alt) * 1000.0f; //*1000//hil_gps.alt; WA
     }
 
-    if(_c_debug_val == 9 || _c_debug_val == 10){
+    if(_c_debug_val == 9 || _c_debug_val == 10 || _c_debug_val == 7 || _c_debug_val == 11){
         debug_key_value_s debug_topic{};
 
         debug_topic.timestamp = hrt_absolute_time();
@@ -804,6 +804,14 @@ bool GPSDriverMavlink::update_device_frequently()
 
         ///workaround - take baro in any case
 
+        if (_c_debug_val == 7)
+        {
+            _air_data_sub.copy(&air_data);
+            if (air_data.timestamp > 0)
+            {
+                _workaround_alt = (air_data.baro_alt_meter) * 1000.0f;
+            }
+        }
         if(_c_debug_val == 9){
             _air_data_sub.copy(&air_data);
             if (air_data.timestamp > 0)
