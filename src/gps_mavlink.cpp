@@ -414,32 +414,8 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
     _gps_position->lat = hil_gps.lat;
     _gps_position->lon = hil_gps.lon;
     _gps_position->alt = hil_gps.alt;
-
-
-
-
-
-
-    if(_c_debug_val == 9 || _c_debug_val == 11 || _c_debug_val ==7){
-        _gps_position->alt = _workaround_alt; //*1000//hil_gps.alt; WA
-    }
-
-    if(_c_debug_val == 10){
-        _gps_position->alt = (-lpos.z + lpos.ref_alt) * 1000.0f; //*1000//hil_gps.alt; WA
-    }
-
-    if(_c_debug_val == 9 || _c_debug_val == 10 || _c_debug_val == 7 || _c_debug_val == 11){
-        debug_key_value_s debug_topic{};
-
-        debug_topic.timestamp = hrt_absolute_time();
-        char colugoD[] = "clgAltD";
-        memcpy(debug_topic.key, colugoD, sizeof(debug_topic.key));
-        debug_topic.key[sizeof(colugoD) - 1] = '\0'; // enforce null termination
-        debug_topic.value = (_gps_position->alt * 0.001f);
-
-        _debug_key_value_pub.publish(debug_topic);
-    }
-
+    //workaround take baro alt instead of asio obox
+    _gps_position->alt = _workaround_alt; //*1000//hil_gps.alt; WA
 
     _gps_position->alt_ellipsoid = hil_gps.alt;
 
@@ -463,6 +439,11 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
     _gps_position->vel_n_m_s = (float) (hil_gps.vn) / 100.0f; // cm/s -> m/s
     _gps_position->vel_e_m_s = (float) (hil_gps.ve) / 100.0f; // cm/s -> m/s
     _gps_position->vel_d_m_s = (float) (hil_gps.vd) / 100.0f; // cm/s -> m/s
+    if(_c_debug_val == 8){
+        _gps_position->vel_e_m_s = 0;
+        _gps_position->vel_n_m_s = 0;
+
+    }
     _gps_position->cog_rad = 0;                               //((hil_gps.cog == 65535) ? (float) NAN : matrix::wrap_2pi(math::radians(hil_gps.cog * 1e-2f))); // cdeg -> rad
     _gps_position->vel_ned_valid = true;
 
@@ -760,10 +741,6 @@ bool GPSDriverMavlink::update_device_frequently()
             if (lpos.z_valid && lpos.z_global)
             {
                 mavlink_global_position_int_msg.alt = (-lpos.z + lpos.ref_alt) * 1000.0f;
-
-                if(_c_debug_val == 9){
-                    _ref_alt = lpos.ref_alt;
-                }
             }
             else
             {
@@ -803,35 +780,10 @@ bool GPSDriverMavlink::update_device_frequently()
         }
 
         ///workaround - take baro in any case
-
-        if (_c_debug_val == 7)
+        _air_data_sub.copy(&air_data);
+        if (air_data.timestamp > 0)
         {
-            _air_data_sub.copy(&air_data);
-            if (air_data.timestamp > 0)
-            {
-                _workaround_alt = (air_data.baro_alt_meter) * 1000.0f;
-            }
-        }
-        if(_c_debug_val == 9){
-            _air_data_sub.copy(&air_data);
-            if (air_data.timestamp > 0)
-            {
-                _workaround_alt = (air_data.baro_alt_meter + _ref_alt) * 1000.0f;
-            }
-        }
-
-        if(_c_debug_val == 11){
-            sensor_gps_s gps0_data;
-            if(_sensor_gps0_sub.updated())
-            {
-                if (_sensor_gps0_sub.copy(&gps0_data))
-                {
-                    _workaround_alt = gps0_data.alt;
-                }
-
-            }
-
-
+            _workaround_alt = (air_data.baro_alt_meter) * 1000.0f;
         }
 
     }

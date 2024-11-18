@@ -129,7 +129,6 @@ class GPSDriverMavlink : public GPSBaseStationSupport
     uORB::Publication<debug_key_value_s> _debug_key_value_pub{ORB_ID(debug_key_value)};
     uORB::Subscription _sensor_gps0_sub{ORB_ID(sensor_gps), 0};
     int32_t _workaround_alt{0};
-    float _ref_alt{0};
     //////////
 
     void get_parameters();
