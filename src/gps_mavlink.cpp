@@ -435,10 +435,11 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
     _gps_position->jamming_indicator = 0;
     _gps_position->jamming_state = 0;
 
-    _gps_position->vel_m_s = (float) (hil_gps.vel) / 100.0f;  // cm/s -> m/s
+    _gps_position->vel_m_s   = (float) (hil_gps.vel) / 100.0f;  // cm/s -> m/s
     _gps_position->vel_n_m_s = (float) (hil_gps.vn) / 100.0f; // cm/s -> m/s
     _gps_position->vel_e_m_s = (float) (hil_gps.ve) / 100.0f; // cm/s -> m/s
     _gps_position->vel_d_m_s = (float) (hil_gps.vd) / 100.0f; // cm/s -> m/s
+
     if(_c_debug_val == 8){
         _gps_position->vel_e_m_s = 0;
         _gps_position->vel_n_m_s = 0;
