@@ -443,7 +443,6 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
     if(_c_debug_val == 8){
         _gps_position->vel_e_m_s = 0;
         _gps_position->vel_n_m_s = 0;
-
     }
     _gps_position->cog_rad = 0;                               //((hil_gps.cog == 65535) ? (float) NAN : matrix::wrap_2pi(math::radians(hil_gps.cog * 1e-2f))); // cdeg -> rad
     _gps_position->vel_ned_valid = true;
@@ -459,6 +458,16 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
     system_error_nav_state = (uint8_t) hil_gps.eph;
 
     _gps_position->timestamp = hrt_absolute_time();
+        if(_c_debug_val == 8 || _c_debug_val == 7){
+        _gps_position->vdop = 67;
+        _gps_position->epv  = 67;
+    }
+    if(_c_debug_val == 8){
+        _gps_position->vel_e_m_s = 0;
+        _gps_position->vel_n_m_s = 0;
+        _gps_position->vel_d_m_s = 0;
+        _gps_position->vel_ned_valid = false;
+    }
 
     is_hil_data_recieved = true;
 }
