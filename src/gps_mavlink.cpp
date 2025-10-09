@@ -416,6 +416,15 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
     _gps_position->lat = hil_gps.lat;
     _gps_position->lon = hil_gps.lon;
     _gps_position->alt = hil_gps.alt;
+    if(_use_baro_altitude)
+    {
+        // inject baro altitude to asio/obox
+        _air_data_sub.copy(&air_data);
+        if (air_data.timestamp > 0)
+        {
+            _gps_position->alt = air_data.baro_alt_meter * 1000.0f;
+        }
+    }
     _gps_position->alt_ellipsoid = hil_gps.alt;
 
     _gps_position->s_variance_m_s = 0.25f;
@@ -683,15 +692,6 @@ bool GPSDriverMavlink::update_device_frequently()
             mavlink_gps_raw_int_msg.lat = main_gps_data.lat;
             mavlink_gps_raw_int_msg.lon = main_gps_data.lon;
             mavlink_gps_raw_int_msg.alt = main_gps_data.alt;
-            if(_use_baro_altitude)
-            {
-                // inject baro altitude to asio/obox
-                _air_data_sub.copy(&air_data);
-                if (air_data.timestamp > 0)
-                {
-                    mavlink_gps_raw_int_msg.alt = air_data.baro_alt_meter * 1000.0f;
-                }
-            }
 
             mavlink_gps_raw_int_msg.eph =
                 (uint16_t) (main_gps_data.hdop * 100.0f); // 79;  //(uint16_t) (main_gps_data.eph * 100.0f); // 79  GPS HDOP horizontal dilution of position (unitless)
