@@ -88,6 +88,11 @@ void GPSDriverMavlink::get_parameters()
             GPSDriverMavlink::start_timer_init_location = hrt_absolute_time();
         }
     }
+
+    parameter_handle = param_find("GPS_MAV_USE_BARO");
+    int32_t iUseBaro = 0;
+    param_get(parameter_handle, &iUseBaro);
+    _use_baro_altitude = iUseBaro == 1;
 }
 
 void GPSDriverMavlink::send_mavlink_packet(uint32_t msgid, const char *packet, uint8_t min_length, uint8_t length, uint8_t crc_extra)
@@ -678,6 +683,16 @@ bool GPSDriverMavlink::update_device_frequently()
             mavlink_gps_raw_int_msg.lat = main_gps_data.lat;
             mavlink_gps_raw_int_msg.lon = main_gps_data.lon;
             mavlink_gps_raw_int_msg.alt = main_gps_data.alt;
+            if(_use_baro_altitude)
+            {
+                // inject baro altitude to asio/obox
+                _air_data_sub.copy(&air_data);
+                if (air_data.timestamp > 0)
+                {
+                    mavlink_gps_raw_int_msg.alt = air_data.baro_alt_meter * 1000.0f;
+                }
+            }
+
             mavlink_gps_raw_int_msg.eph =
                 (uint16_t) (main_gps_data.hdop * 100.0f); // 79;  //(uint16_t) (main_gps_data.eph * 100.0f); // 79  GPS HDOP horizontal dilution of position (unitless)
             mavlink_gps_raw_int_msg.epv = (uint16_t) (main_gps_data.vdop * 100.0f); // 127; //(uint16_t) (main_gps_data.epv * 100.0f); // 127 GPS VDOP vertical dilution of position

@@ -204,6 +204,7 @@ class GPSDriverMavlink : public GPSBaseStationSupport
     int32_t initialized_lattitude = 0;
     int32_t initialized_longitude = 0;
     int32_t initialized_time = -1;
+    bool _use_baro_altitude = false;
     hrt_abstime timer_init_location = 0;
     bool is_hil_data_recieved = false;
 
