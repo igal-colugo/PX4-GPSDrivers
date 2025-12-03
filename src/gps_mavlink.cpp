@@ -93,6 +93,11 @@ void GPSDriverMavlink::get_parameters()
     int32_t iUseBaro = 0;
     param_get(parameter_handle, &iUseBaro);
     _use_baro_altitude = iUseBaro == 1;
+
+    parameter_handle = param_find("GPS_MAV_VEL_VAL");
+    int32_t iNedValid = 1;
+    param_get(parameter_handle, &iNedValid);
+    _velocity_ned_valid = iNedValid == 1;
 }
 
 void GPSDriverMavlink::send_mavlink_packet(uint32_t msgid, const char *packet, uint8_t min_length, uint8_t length, uint8_t crc_extra)
@@ -433,7 +438,7 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
 
     float ephTemp = (float) hil_gps.eph * 0.1f;//workaround for floating point croping
     _gps_position->eph = ephTemp * 0.1f;
-    _gps_position->epv = (float) hil_gps.epv * 1e-2f; // cm -> m
+    _gps_position->epv = 6.0;//(float) hil_gps.epv * 1e-2f; // cm -> m
 
     _gps_position->hdop = _gps_position->eph;
     _gps_position->vdop = _gps_position->epv;
@@ -448,7 +453,7 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
     _gps_position->vel_e_m_s = (float) (hil_gps.ve) / 100.0f; // cm/s -> m/s
     _gps_position->vel_d_m_s = (float) (hil_gps.vd) / 100.0f; // cm/s -> m/s
     _gps_position->cog_rad = 0;                               //((hil_gps.cog == 65535) ? (float) NAN : matrix::wrap_2pi(math::radians(hil_gps.cog * 1e-2f))); // cdeg -> rad
-    _gps_position->vel_ned_valid = true;
+    _gps_position->vel_ned_valid = _velocity_ned_valid;
 
     _gps_position->timestamp_time_relative = 0;
     _gps_position->time_utc_usec = hil_gps.time_usec;
