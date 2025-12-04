@@ -438,7 +438,7 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
 
     float ephTemp = (float) hil_gps.eph * 0.1f;//workaround for floating point croping
     _gps_position->eph = ephTemp * 0.1f;
-    _gps_position->epv = 6.0;//(float) hil_gps.epv * 1e-2f; // cm -> m
+    _gps_position->epv = 100.0;//(float) hil_gps.epv * 1e-2f; // cm -> m
 
     _gps_position->hdop = _gps_position->eph;
     _gps_position->vdop = _gps_position->epv;
@@ -451,7 +451,7 @@ void GPSDriverMavlink::handle_message_hil_gps(mavlink_message_t *msg)
     _gps_position->vel_m_s = (float) (hil_gps.vel) / 100.0f;  // cm/s -> m/s
     _gps_position->vel_n_m_s = (float) (hil_gps.vn) / 100.0f; // cm/s -> m/s
     _gps_position->vel_e_m_s = (float) (hil_gps.ve) / 100.0f; // cm/s -> m/s
-    _gps_position->vel_d_m_s = (float) (hil_gps.vd) / 100.0f; // cm/s -> m/s
+    _gps_position->vel_d_m_s = _velocity_ned_valid ? (float) (hil_gps.vd) / 100.0f : NAN;//(float) (hil_gps.vd) / 100.0f; // cm/s -> m/s
     _gps_position->cog_rad = 0;                               //((hil_gps.cog == 65535) ? (float) NAN : matrix::wrap_2pi(math::radians(hil_gps.cog * 1e-2f))); // cdeg -> rad
     _gps_position->vel_ned_valid = _velocity_ned_valid;
 
